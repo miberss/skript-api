@@ -1,0 +1,144 @@
+:root {
+    --background: #1E222AF9;
+    --dark-code: #12151a;
+    --foreground: #D8DEE9;
+    --gray: #b2b5d4;
+    --accent-soft: #b48ead;
+    --accent: #88C0D0;
+    --accent-strong: #81A1C1;
+    --highlight: #A3BE8C;
+    --warning: #EBCB8B;
+    --border: var(--accent-strong);
+    --right-border: 60ch
+}
+
+@font-face { font-family: IosevkaSS14; src: url('../assets/IosevkaSS14.ttf'); } 
+
+/* hide page scrollbar */
+html { scrollbar-width: none; } /* Firefox */
+body { -ms-overflow-style: none; } /* IE and Edge */
+body::-webkit-scrollbar, body::-webkit-scrollbar-button { display: none; } /* Chrome */
+/* end hide page scrollbar */
+
+.bg {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(var(--background)), url(../assets/frutiger_metro.png);
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: cover;
+    z-index: -1;
+}
+
+body {
+    color: var(--foreground);
+    font-family: IosevkaSS14;
+    padding: 0ch;
+    margin-top: 1ch;
+}
+
+a {
+    color: var(--accent-soft);
+}
+
+a:hover {
+    color: var(--highlight);
+}
+
+h1 {
+    color: var(--accent);
+    margin-top: 0lh;
+    margin-bottom: 0lh;
+    text-decoration: underline;
+}
+
+h2 {
+    color: var(--accent);
+    margin-top: 0.25lh;
+    margin-bottom: -0.25lh;
+}
+
+h3 {
+    color: var(--warning);
+    margin-top: 0lh;
+    margin-bottom: 0lh;
+}
+
+p,
+ul {
+    margin-top: 0.5lh;
+    margin-bottom: 0lh;
+    max-width: var(--right-border);
+    line-height: 115%;
+}
+
+ul {
+    margin-left: -1ch;
+}
+
+p {
+    margin-top: 0.5lh;
+    margin-bottom: 0.5lh;
+}
+
+ul li::marker {
+    color: var(--accent-strong);
+    content: "-> ";
+}
+
+.label {
+    color: var(--warning);
+    font-weight: bold;
+}
+
+.extra-info {
+    color: var(--accent-strong);
+    font-style: italic;
+    margin-top: 0.2lh;
+    margin-bottom: -0.2lh;
+}
+
+em {
+    font-style: italic;
+    color: var(--gray);
+}
+
+.topnav input[type=text] {
+    padding: 0.5ch;
+    color:#D8DEE9;
+    font-family: inherit;
+    width: 60ch;
+    background-color: #b48ead15;
+    overflow: visible;
+    display: flex;
+    flex-direction: row;
+    border-style: none;
+    outline: #12151a;
+}
+
+.str {
+    color: #A3BE8C;
+}
+
+.num {
+    color: #EBCB8B;
+}
+
+.lvar {
+    font-style: italic;
+    color: #81A1C1;
+}
+
+.item:hover {
+    background-color: #a3be8c70;
+}
+
+img {
+    display: inline-block;
+    vertical-align: middle;
+    width: 4lh;
+    height: 4lh;
+}
