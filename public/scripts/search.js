@@ -17,7 +17,7 @@ const CATEGORY_COLORS = {
   Structure: '#20C997'
 };
 
-const ADDON_LIST = 'Skript,SkBee,oopsk,SkCheese,skript-reflect,skript-gui,skNoise,';
+const ADDON_LIST = 'Skript,SkBee,oopsk,SkCheese,skript-reflect,skript-gui,skNoise';
 const API_URL = 'https://api.skdocs.org/api/search';
 const SEARCH_LIMIT = 250;
 const SEARCH_SORT = 'relevance';
@@ -123,10 +123,7 @@ const formatSyntaxLine = (line) => {
     let i = 0;
 
     while (i < text.length) {
-      // Detect optional safely
       if (text[i] === '[') {
-        
-        // Find matching ]
         let depth = 1;
         let j = i + 1;
         while (j < text.length && depth > 0) {
@@ -134,33 +131,21 @@ const formatSyntaxLine = (line) => {
           else if (text[j] === ']') depth--;
           j++;
         }
-
-        // If no matching closing bracket, treat as a literal
         if (depth !== 0) {
           result += '[';
           i++;
           continue;
         }
-
-        // Extract inside 
         const inner = text.slice(i + 1, j - 1);
-
-        // Recursively format contents
         const formattedInner = process(inner);
-
-        // Wrap as optional
         result += wrapOptional(formattedInner);
-
         i = j;
 
       } else {
-        // Normal characters
         result += text[i];
         i++;
       }
     }
-
-    // Replace %types%
     return result.replace(REGEX.types, (_, types) => formatTypes(types));
   };
 

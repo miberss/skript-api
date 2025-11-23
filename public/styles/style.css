@@ -71,7 +71,7 @@ p,
 ul {
     margin-top: 0.5lh;
     margin-bottom: 0lh;
-    max-width: var(--right-border);
+    max-width: 200ch;
     line-height: 115%;
 }
 
