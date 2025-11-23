@@ -105,50 +105,68 @@ const formatMarkdown = (text) => text ? marked.parseInline(text) : '';
 
 const formatSyntaxLine = (line) => {
 
-  const wrapOptional = (text) => `<span style="color: ${STYLE.gray};">[${text}]</span>`;
+  const wrapOptional = (text) => 
+    `<span style="color:${STYLE.gray};">[${text}]</span>`;
 
-  const createTypeLink = (type) => 
+  const createTypeLink = (type) =>
     `<a href="#" class="type-link" data-type="${escapeHtml(type)}">${escapeHtml(type)}</a>`;
 
-  const formatTypes = (types) => types.split('/').map(t => t.trim()).map(createTypeLink).join(`<span style="color: ${STYLE.foreground};">/</span>`);
+  const formatTypes = (types) =>
+    types
+      .split('/')
+      .map(t => t.trim())
+      .map(createTypeLink)
+      .join(`<span style="color:${STYLE.foreground};">/</span>`);
 
   const process = (text) => {
     let result = '';
-    let stack = []; // track optional depth
-    let buffer = '';
-    
-    for (let i = 0; i < text.length; i++) {
-      const char = text[i];
+    let i = 0;
 
-      if (char === '[') {
-        if (stack.length > 0) {
-          stack[stack.length - 1].buffer += char; // nested optional
+    while (i < text.length) {
+      // Detect optional safely
+      if (text[i] === '[') {
+        
+        // Find matching ]
+        let depth = 1;
+        let j = i + 1;
+        while (j < text.length && depth > 0) {
+          if (text[j] === '[') depth++;
+          else if (text[j] === ']') depth--;
+          j++;
         }
-        stack.push({ buffer: '' });
-      } else if (char === ']') {
-        const top = stack.pop();
-        const content = process(top.buffer); // recursive
-        const wrapped = wrapOptional(content);
-        if (stack.length > 0) {
-          stack[stack.length - 1].buffer += wrapped;
-        } else {
-          result += wrapped;
+
+        // If no matching closing bracket, treat as a literal
+        if (depth !== 0) {
+          result += '[';
+          i++;
+          continue;
         }
+
+        // Extract inside 
+        const inner = text.slice(i + 1, j - 1);
+
+        // Recursively format contents
+        const formattedInner = process(inner);
+
+        // Wrap as optional
+        result += wrapOptional(formattedInner);
+
+        i = j;
+
       } else {
-        if (stack.length > 0) {
-          stack[stack.length - 1].buffer += char;
-        } else {
-          result += char;
-        }
+        // Normal characters
+        result += text[i];
+        i++;
       }
     }
 
-    // Finally, replace types inside the result
+    // Replace %types%
     return result.replace(REGEX.types, (_, types) => formatTypes(types));
   };
 
   return process(line);
 };
+
 
 const getColor = (category) => 
   CATEGORY_COLORS[category] || STYLE.foreground;
@@ -245,10 +263,10 @@ const createSyntaxLines = (syntax, category) => {
   const lines = syntax.split('\n');
   return lines.map((line, index) => `
     <div style="margin-left: 1ch; margin-bottom: 0.25lh; display: flex; align-items: flex-start; gap: 0.5ch;">
+      ${category !== 'Function' ? createToggleButton(line, index) : ''}
       <code style="${STYLES.code}" data-full="${escapeHtml(line)}" data-short="${escapeHtml(shortenSyntax(line))}">
         ${formatSyntaxLine(line)}
       </code>
-      ${category !== 'Function' ? createToggleButton(line, index) : ''}
       ${createCopyButton(line, index)}
     </div>
   `).join('');
