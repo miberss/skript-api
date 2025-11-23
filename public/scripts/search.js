@@ -1,5 +1,5 @@
-import { marked } from 'marked';
-import Fuse from 'fuse.js';
+import { marked } from "marked"
+import Fuse from "fuse.js"
 
 marked.setOptions({
   breaks: true,
@@ -22,7 +22,6 @@ const API_URL = 'https://api.skdocs.org/api/search';
 const SEARCH_LIMIT = 250;
 const SEARCH_SORT = 'relevance';
 const DEBOUNCE_DELAY = 300;
-const RESULTS_PER_PAGE = 25;
 const MAX_HISTORY = 10;
 const STORAGE_KEY = 'skript-search-history';
 
@@ -77,7 +76,9 @@ const MESSAGES = {
   copied: 'copied',
   copy: 'copy',
   short: 'short',
-  full: 'full'
+  full: 'full',
+  linkCopied: 'link copied',
+  copyLink: 'link'
 };
 
 const SELECTORS = {
@@ -92,7 +93,6 @@ const EVENTS = {
   enter: 'Enter'
 };
 
-let currentPage = 1;
 let allResults = [];
 let debounceTimer = null;
 
@@ -169,6 +169,9 @@ const createParagraph = (content, styles = '') =>
 
 const createCopyButton = (syntax, index) => 
   `<button class="copy-button" data-syntax="${escapeHtml(syntax)}" data-index="${index}" style="${STYLES.copyButton}">${MESSAGES.copy}</button>`;
+
+const createLinkButton = (resultId) => 
+  `<button class="link-button" data-result-id="${escapeHtml(resultId)}" style="${STYLES.copyButton}">${MESSAGES.copyLink}</button>`;
 
 const createToggleButton = (syntax, index) =>
   `<button class="toggle-button" data-syntax="${escapeHtml(syntax)}" data-index="${index}" data-mode="full" style="${STYLES.copyButton}">${MESSAGES.short}</button>`;
@@ -257,18 +260,26 @@ const createSyntaxLines = (syntax, category) => {
   `).join('');
 };
 
+const generateResultId = (result) => {
+  const str = `${result.title}-${result.category}-${result.addon || ''}`;
+  return str.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+};
 
 const renderResult = (result) => {
   const color = getColor(result.category);
+  const resultId = generateResultId(result);
   
   return `
-    ${createSection(`
-      <h2 style="${STYLES.title(color)}">${escapeHtml(result.title)}</h2>
-      <span style="color: ${color}">${escapeHtml(result.category)}</span>
-      ${createMetadata(result.addon, result.since)}
-    `, STYLES.header(color))}
-    ${createSyntaxLines(result.syntax, result.category)}
-    ${createParagraph(formatMarkdown(result.description), STYLES.description)}
+    <div id="result-${resultId}">
+      ${createSection(`
+        <h2 style="${STYLES.title(color)}">${escapeHtml(result.title)}</h2>
+        <span style="color: ${color}">${escapeHtml(result.category)}</span>
+        ${createMetadata(result.addon, result.since)}
+        ${createLinkButton(resultId)}
+      `, STYLES.header(color))}
+      ${createSyntaxLines(result.syntax, result.category)}
+      ${createParagraph(formatMarkdown(result.description), STYLES.description)}
+    </div>
   `;
 };
 
@@ -309,6 +320,30 @@ const attachCopyButtons = () => {
     });
   });
   
+  document.querySelectorAll('.link-button').forEach(button => {
+    button.addEventListener('click', (e) => {
+      const btn = e.currentTarget;
+      const resultId = btn.dataset.resultId;
+      const url = new URL(window.location);
+      url.searchParams.set('id', resultId);
+      
+      navigator.clipboard.writeText(url.toString()).then(() => {
+        const originalText = btn.textContent;
+        btn.textContent = MESSAGES.linkCopied;
+        setTimeout(() => {
+          btn.textContent = originalText;
+        }, 500);
+      });
+    });
+    
+    button.addEventListener('mouseenter', (e) => {
+      e.currentTarget.style.backgroundColor = STYLE.on;
+    });
+    button.addEventListener('mouseleave', (e) => {
+      e.currentTarget.style.backgroundColor = STYLE.off;
+    });
+  });
+  
   document.querySelectorAll('.toggle-button').forEach(button => {
     button.addEventListener('click', (e) => {
       const btn = e.currentTarget;
@@ -339,97 +374,43 @@ const attachCopyButtons = () => {
   });
 };
 
-const createPaginationControls = (totalResults, currentPage) => {
-  const totalPages = Math.ceil(totalResults / RESULTS_PER_PAGE);
-  if (totalPages <= 1) return '';
-  
-  const prevDisabled = currentPage === 1;
-  const nextDisabled = currentPage === totalPages;
-  
-  return `
-    <div style="${STYLES.pagination}">
-      <button 
-        class="page-button" 
-        data-page="prev" 
-        style="${prevDisabled ? STYLES.pageButtonDisabled : STYLES.pageButton}"
-        ${prevDisabled ? 'disabled' : ''}
-      >PREVIOUS</button>
-      <span>${currentPage}/${totalPages}</span>
-      <button 
-        class="page-button" 
-        data-page="next" 
-        style="${nextDisabled ? STYLES.pageButtonDisabled : STYLES.pageButton}"
-        ${nextDisabled ? 'disabled' : ''}
-      >NEXT</button>
-    </div>
-  `;
-};
-
-const attachPaginationListeners = (performSearch) => {
-  document.querySelectorAll('.page-button').forEach(button => {
-    button.addEventListener('click', () => {
-      const action = button.dataset.page;
-      if (action === 'prev' && currentPage > 1) {
-        currentPage--;
-      } else if (action === 'next' && currentPage < Math.ceil(allResults.length / RESULTS_PER_PAGE)) {
-        currentPage++;
-      }
-      displayCurrentPage();
-      attachTypeLinks(performSearch);
-      attachCopyButtons();
-      attachPaginationListeners(performSearch);
-    });
-    
-    if (!button.disabled) {
-      button.addEventListener('mouseenter', (e) => {
-        e.currentTarget.style.backgroundColor = STYLE.on;
-      });
-      button.addEventListener('mouseleave', (e) => {
-        e.currentTarget.style.backgroundColor = STYLE.off;
-      });
-    }
-  });
-};
-
-const getPaginatedResults = (results, page) => {
-  const start = (page - 1) * RESULTS_PER_PAGE;
-  const end = start + RESULTS_PER_PAGE;
-  return results.slice(start, end);
-};
-
-const createResultsHTML = (results, duration, page) => `
-  ${MESSAGES.results(duration, allResults.length)}
+const createResultsHTML = (results, duration) => `
+  ${MESSAGES.results(duration, results.length)}
   ${results.map(renderResult).join('')}
-  ${createPaginationControls(allResults.length, page)}
 `;
 
-const displayCurrentPage = () => {
-  const container = document.getElementById(SELECTORS.container);
-  window.scrollTo({ top: 0 });
-  
-  const paginatedResults = getPaginatedResults(allResults, currentPage);
-  container.innerHTML = paginatedResults.length
-    ? createResultsHTML(paginatedResults, 0, currentPage)
-    : MESSAGES.noResults;
+const scrollToResultIfNeeded = () => {
+  const resultId = loadResultIdFromURL();
+  if (resultId) {
+    setTimeout(() => {
+      const element = document.getElementById(`result-${resultId}`);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        element.style.backgroundColor = STYLE.on;
+        setTimeout(() => {
+          element.style.backgroundColor = '';
+        }, 2000);
+      }
+    }, 100);
+  }
 };
 
 const displayResults = (results, duration, container, performSearch) => {
   window.scrollTo({ top: 0 });
   
   allResults = results;
-  currentPage = 1;
 
   if (!results.length) {
     container.innerHTML = MESSAGES.noResults;
     return;
   }
   
-  const paginatedResults = getPaginatedResults(results, currentPage);
-  container.innerHTML = createResultsHTML(paginatedResults, duration, currentPage);
+  container.innerHTML = createResultsHTML(results, duration);
   
   attachTypeLinks(performSearch);
   attachCopyButtons();
-  attachPaginationListeners(performSearch);
+  
+  scrollToResultIfNeeded();
 };
 
 const buildSearchURL = (query) => 
@@ -563,6 +544,11 @@ const hideHistoryDropdown = () => {
 const loadQueryFromURL = () => {
   const params = new URLSearchParams(window.location.search);
   return params.get('q');
+};
+
+const loadResultIdFromURL = () => {
+  const params = new URLSearchParams(window.location.search);
+  return params.get('id');
 };
 
 document.addEventListener('DOMContentLoaded', () => {
