@@ -25,7 +25,6 @@ const DEBOUNCE_DELAY = 300;
 const RESULTS_PER_PAGE = 25;
 const MAX_HISTORY = 10;
 const STORAGE_KEY = 'skript-search-history';
-const SYNTAX_MODE_KEY = 'skript-syntax-mode';
 
 const FUSE_CONFIG = {
   keys: ['title', 'syntax', 'addon', 'category']
@@ -105,49 +104,54 @@ const escapeHtml = (text) => {
 const formatMarkdown = (text) => text ? marked.parseInline(text) : '';
 
 const formatSyntaxLine = (line) => {
+
   const wrapOptional = (text) => `<span style="color: ${STYLE.gray};">[${text}]</span>`;
 
-  const createTypeLink = (type) =>
+  const createTypeLink = (type) => 
     `<a href="#" class="type-link" data-type="${escapeHtml(type)}">${escapeHtml(type)}</a>`;
 
-  const formatTypes = (types) => types.split('/').map(t => t.trim()).map(createTypeLink).join('<span style="color: ' + STYLE.foreground + ';">/</span>');
+  const formatTypes = (types) => types.split('/').map(t => t.trim()).map(createTypeLink).join(`<span style="color: ${STYLE.foreground};">/</span>`);
 
   const process = (text) => {
     let result = '';
-    let stack = [];
+    let stack = []; // track optional depth
+    let buffer = '';
+    
     for (let i = 0; i < text.length; i++) {
       const char = text[i];
+
       if (char === '[') {
-        if (stack.length > 0) stack[stack.length - 1].buffer += char;
+        if (stack.length > 0) {
+          stack[stack.length - 1].buffer += char; // nested optional
+        }
         stack.push({ buffer: '' });
       } else if (char === ']') {
         const top = stack.pop();
-        const inner = process(top.buffer).trim();
-        const wrapped = wrapOptional(inner);
-        if (stack.length > 0) stack[stack.length - 1].buffer += wrapped;
-        else result += wrapped;
+        const content = process(top.buffer); // recursive
+        const wrapped = wrapOptional(content);
+        if (stack.length > 0) {
+          stack[stack.length - 1].buffer += wrapped;
+        } else {
+          result += wrapped;
+        }
       } else {
-        if (stack.length > 0) stack[stack.length - 1].buffer += char;
-        else result += char;
+        if (stack.length > 0) {
+          stack[stack.length - 1].buffer += char;
+        } else {
+          result += char;
+        }
       }
     }
-    return result.replace(REGEX.types, (_, types) => formatTypes(types)).replace(/\s+/g, ' ').trim();
+
+    // Finally, replace types inside the result
+    return result.replace(REGEX.types, (_, types) => formatTypes(types));
   };
 
   return process(line);
 };
 
-
 const getColor = (category) => 
   CATEGORY_COLORS[category] || STYLE.foreground;
-
-const getSyntaxMode = () => localStorage.getItem(SYNTAX_MODE_KEY) || 'full';
-
-const toggleSyntaxMode = () => {
-  const newMode = getSyntaxMode() === 'full' ? 'short' : 'full';
-  localStorage.setItem(SYNTAX_MODE_KEY, newMode);
-  return newMode;
-};
 
 const createMetadata = (addon, since) => 
   addon || since 
@@ -163,48 +167,8 @@ const createParagraph = (content, styles = '') =>
 const createCopyButton = (syntax, index) => 
   `<button class="copy-button" data-syntax="${escapeHtml(syntax)}" data-index="${index}" style="${STYLES.copyButton}">${MESSAGES.copy}</button>`;
 
-const createToggleButton = (syntax, index) => {
-  const mode = getSyntaxMode(); // 'full' or 'short'
-  return `<button 
-    class="toggle-button" 
-    data-syntax="${escapeHtml(syntax)}" 
-    data-index="${index}" 
-    data-mode="${mode}" 
-    style="${STYLES.copyButton}"
-  >
-    ${mode === 'full' ? MESSAGES.short : MESSAGES.full}
-  </button>`;
-};
-
-
-const createGlobalToggleButton = () => {
-  const button = document.createElement('button');
-  button.id = 'syntax-mode-toggle';
-  button.textContent = getSyntaxMode() === 'full' ? 'Showing full syntax' : 'Showing short syntax';
-  
-  // fixed top-right styling
-  button.style.cssText = `
-    position: fixed;
-    top: 1em;
-    right: 1em;
-    z-index: 9999;
-    padding: 0.5ch 1ch;
-    cursor: pointer;
-    background-color: ${STYLE.off};
-    color: ${STYLE.gray};
-    border: none;
-    font-family: inherit;
-  `;
-
-  button.addEventListener('click', () => {
-    const mode = toggleSyntaxMode();
-    button.textContent = mode === 'full' ? 'Showing full syntax' : 'Showing short syntax';
-    displayCurrentPage(); // re-render current page using new mode
-  });
-
-  document.body.appendChild(button);
-};
-
+const createToggleButton = (syntax, index) =>
+  `<button class="toggle-button" data-syntax="${escapeHtml(syntax)}" data-index="${index}" data-mode="full" style="${STYLES.copyButton}">${MESSAGES.short}</button>`;
 
 function shortenSyntax(text) {
   function processSegment(str) {
@@ -277,24 +241,15 @@ function shortenSyntax(text) {
 
 const createSyntaxLines = (syntax) => {
   if (!syntax) return '';
+  
   const lines = syntax.split('\n');
-  const mode = getSyntaxMode();
-
-  return lines.map((line, index) => {
-    const full = escapeHtml(line);
-    const short = escapeHtml(shortenSyntax(line));
-    const display = mode === 'full' ? full : short;
-
-    return `
-      <div style="margin-left:1ch;margin-bottom:0.25lh;display:flex;align-items:flex-start;gap:0.5ch;">
-        <code style="${STYLES.code}" data-full="${full}" data-short="${short}">
-          ${formatSyntaxLine(display)}
-        </code>
-        ${createToggleButton(line, index)}
-        ${createCopyButton(line, index)}
-      </div>
-    `;
-  }).join('');
+  return lines.map((line, index) => `
+    <div style="margin-left: 1ch; margin-bottom: 0.25lh; display: flex; align-items: flex-start; gap: 0.5ch;">
+      <code style="${STYLES.code}" data-full="${escapeHtml(line)}" data-short="${escapeHtml(shortenSyntax(line))}">${formatSyntaxLine(line)}</code>
+      ${createToggleButton(line, index)}
+      ${createCopyButton(line, index)}
+    </div>
+  `).join('');
 };
 
 const renderResult = (result) => {
@@ -348,28 +303,34 @@ const attachCopyButtons = () => {
     });
   });
   
-    document.querySelectorAll('.toggle-button').forEach(button => {
+  document.querySelectorAll('.toggle-button').forEach(button => {
     button.addEventListener('click', (e) => {
-        const btn = e.currentTarget;
-        const codeElement = btn.parentElement.querySelector('code');
-        const copyBtn = btn.parentElement.querySelector('.copy-button');
-
-        if (btn.dataset.mode === 'full') {
-            codeElement.innerHTML = formatSyntaxLine(codeElement.dataset.short);
-            btn.dataset.mode = 'short';
-            btn.textContent = MESSAGES.full;
-            copyBtn.dataset.syntax = codeElement.dataset.short;
-        } else {
-            codeElement.innerHTML = formatSyntaxLine(codeElement.dataset.full);
-            btn.dataset.mode = 'full';
-            btn.textContent = MESSAGES.short;
-            copyBtn.dataset.syntax = codeElement.dataset.full;
-        }
+      const btn = e.currentTarget;
+      const codeElement = btn.parentElement.querySelector('code');
+      const currentMode = btn.dataset.mode;
+      
+      if (currentMode === 'full') {
+        const shortSyntax = codeElement.dataset.short;
+        codeElement.innerHTML = formatSyntaxLine(shortSyntax);
+        btn.dataset.mode = 'short';
+        btn.textContent = MESSAGES.full;
+        btn.nextElementSibling.dataset.syntax = shortSyntax;
+      } else {
+        const fullSyntax = codeElement.dataset.full;
+        codeElement.innerHTML = formatSyntaxLine(fullSyntax);
+        btn.dataset.mode = 'full';
+        btn.textContent = MESSAGES.short;
+        btn.nextElementSibling.dataset.syntax = fullSyntax;
+      }
     });
-
-    button.addEventListener('mouseenter', e => e.currentTarget.style.backgroundColor = STYLE.on);
-    button.addEventListener('mouseleave', e => e.currentTarget.style.backgroundColor = STYLE.off);
+    
+    button.addEventListener('mouseenter', (e) => {
+      e.currentTarget.style.backgroundColor = STYLE.on;
     });
+    button.addEventListener('mouseleave', (e) => {
+      e.currentTarget.style.backgroundColor = STYLE.off;
+    });
+  });
 };
 
 const createPaginationControls = (totalResults, currentPage) => {
@@ -599,19 +560,18 @@ const loadQueryFromURL = () => {
 };
 
 document.addEventListener('DOMContentLoaded', () => {
-  createGlobalToggleButton();
-
   const searchbar = document.getElementById(SELECTORS.searchbar);
+  
   searchbar.addEventListener('keypress', handleSearch(performSearch));
   searchbar.addEventListener('input', (e) => handleInput(e, performSearch));
   searchbar.addEventListener('focus', () => showHistoryDropdown(searchbar, performSearch));
-
+  
   document.addEventListener('click', (e) => {
     if (!searchbar.contains(e.target) && !document.getElementById(SELECTORS.historyDropdown)?.contains(e.target)) {
       hideHistoryDropdown();
     }
   });
-
+  
   const initialQuery = loadQueryFromURL();
   if (initialQuery) {
     searchbar.value = initialQuery;
