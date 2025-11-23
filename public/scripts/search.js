@@ -239,18 +239,21 @@ function shortenSyntax(text) {
   return processSegment(text).replace(/\s+/g, ' ').trim();
 }
 
-const createSyntaxLines = (syntax) => {
+const createSyntaxLines = (syntax, category) => {
   if (!syntax) return '';
-  
+
   const lines = syntax.split('\n');
   return lines.map((line, index) => `
     <div style="margin-left: 1ch; margin-bottom: 0.25lh; display: flex; align-items: flex-start; gap: 0.5ch;">
-      <code style="${STYLES.code}" data-full="${escapeHtml(line)}" data-short="${escapeHtml(shortenSyntax(line))}">${formatSyntaxLine(line)}</code>
-      ${createToggleButton(line, index)}
+      <code style="${STYLES.code}" data-full="${escapeHtml(line)}" data-short="${escapeHtml(shortenSyntax(line))}">
+        ${formatSyntaxLine(line)}
+      </code>
+      ${category !== 'Function' ? createToggleButton(line, index) : ''}
       ${createCopyButton(line, index)}
     </div>
   `).join('');
 };
+
 
 const renderResult = (result) => {
   const color = getColor(result.category);
@@ -261,7 +264,7 @@ const renderResult = (result) => {
       <span style="color: ${color}">${escapeHtml(result.category)}</span>
       ${createMetadata(result.addon, result.since)}
     `, STYLES.header(color))}
-    ${createSyntaxLines(result.syntax)}
+    ${createSyntaxLines(result.syntax, result.category)}
     ${createParagraph(formatMarkdown(result.description), STYLES.description)}
   `;
 };
