@@ -54,18 +54,18 @@ const REGEX = {
 };
 
 const STYLES = {
-  header: (color) => `margin-bottom: 0lh; padding: 0.25ch 0.5ch; border-left: 0.5ch solid ${color}; display: flex; flex-wrap: wrap; gap: 1ch; align-items: baseline;`,
+  header: `margin-bottom: 0lh; padding: 0.25ch 0.5ch; display: flex; flex-wrap: wrap; gap: 1ch; align-items: baseline;`,
   title: (color) => `margin: 0; font-size: 1.5em; color: ${color}`,
   metadata: 'font-size: 0.9em;',
   syntax: `margin-left: 1ch; margin-bottom: 0.25lh; display: flex; align-items: flex-start; gap: 0.5ch;`,
   code: `background-color: ${STYLE.darkCode}; padding: 0.25ch 0.5ch; width: auto; display: inline-block; font-size: 0.9em;`,
   description: 'margin-left: 1ch; margin-top: 0; margin-bottom: 0.5lh',
   copyButton: `margin-left: 0.5ch; padding: 0.3ch; background-color: ${STYLE.off}; border: none; cursor: pointer; font-size: 0.9em; overflow: visible; color: ${STYLE.gray}; font-family: IosevkaSS14;`,
-  pagination: 'display: flex; gap: 1ch; justify-content: left; margin: 1lh 0; align-items: center;',
   pageButton: `padding: 0.5ch; background-color: ${STYLE.off}; border: none; cursor: pointer; overflow: visible; color: ${STYLE.gray}; font-family: inherit;`,
   pageButtonDisabled: `padding: 0.5ch; background-color: ${STYLE.off}; opacity: 0.5; border: none; cursor: not-allowed; overflow: visible; color: ${STYLE.gray}; font-family: inherit;`,
   historyDropdown: `position: absolute; background: var(--dark-code); width: 55ch; font-size: 0.9em;`,
-  historyItem: `cursor: pointer; background-color: ${STYLE.off};`
+  historyItem: `cursor: pointer; background-color: ${STYLE.off};`,
+  resultBlock: (color) => `margin-bottom: 0.5lh; padding: 1ch; background-color: rgba(18, 21, 26, 0.5); border-left: 0.5ch solid ${color}; max-width: 100ch;`
 };
 
 const MESSAGES = {
@@ -93,7 +93,6 @@ const EVENTS = {
   enter: 'Enter'
 };
 
-let allResults = [];
 let debounceTimer = null;
 
 const escapeHtml = (text) => {
@@ -270,13 +269,13 @@ const renderResult = (result) => {
   const resultId = generateResultId(result);
   
   return `
-    <div id="result-${resultId}">
+    <div id="result-${resultId}" style="${STYLES.resultBlock(color)}">
       ${createSection(`
         <h2 style="${STYLES.title(color)}">${escapeHtml(result.title)}</h2>
         <span style="color: ${color}">${escapeHtml(result.category)}</span>
         ${createMetadata(result.addon, result.since)}
         ${createLinkButton(resultId)}
-      `, STYLES.header(color))}
+      `, STYLES.header)}
       ${createSyntaxLines(result.syntax, result.category)}
       ${createParagraph(formatMarkdown(result.description), STYLES.description)}
     </div>
@@ -287,7 +286,11 @@ const normalizeType = (type) => type.replace(REGEX.pluralEnding, '');
 
 const handleTypeClick = (performSearch) => (e) => {
   e.preventDefault();
-  performSearch(normalizeType(e.currentTarget.dataset.type));
+  const type = normalizeType(e.currentTarget.dataset.type);
+  const searchbar = document.getElementById(SELECTORS.searchbar);
+  searchbar.value = type;
+  performSearch(type);
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 };
 
 const attachTypeLinks = (performSearch) => {
@@ -398,8 +401,6 @@ const scrollToResultIfNeeded = () => {
 const displayResults = (results, duration, container, performSearch) => {
   window.scrollTo({ top: 0 });
   
-  allResults = results;
-
   if (!results.length) {
     container.innerHTML = MESSAGES.noResults;
     return;
