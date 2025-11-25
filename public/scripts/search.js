@@ -65,7 +65,9 @@ const STYLES = {
   pageButtonDisabled: `padding: 0.5ch; background-color: ${STYLE.off}; opacity: 0.5; border: none; cursor: not-allowed; overflow: visible; color: ${STYLE.gray}; font-family: inherit;`,
   historyDropdown: `position: absolute; background: var(--dark-code); width: 55ch; font-size: 0.9em;`,
   historyItem: `cursor: pointer; background-color: ${STYLE.off};`,
-  resultBlock: (color) => `margin-bottom: 0.5lh; padding: 1ch; background-color: rgba(18, 21, 26, 0.5); border-left: 0.5ch solid ${color}; max-width: 100ch;`
+  resultBlock: (color) => `margin-bottom: 0.5lh; padding: 1ch; background-color: rgba(18, 21, 26, 0.5); border-left: 0.5ch solid ${color}; max-width: 100ch;`,
+  clearButton: `position: absolute; right: 0.5ch; top: 50%; transform: translateY(-50%); padding: 0.3ch 0.5ch; background-color: ${STYLE.off}; border: none; cursor: pointer; color: ${STYLE.gray}; font-family: IosevkaSS14; font-size: 0.9em;`,
+  searchWrapper: `position: relative; display: inline-block;`
 };
 
 const MESSAGES = {
@@ -78,7 +80,8 @@ const MESSAGES = {
   short: 'short',
   full: 'full',
   linkCopied: 'link copied',
-  copyLink: 'link'
+  copyLink: 'link',
+  emptyState: '<p class="extra-info">Search for Skript syntax, types, expressions, and more...</p><p class="extra-info">Try searching for "player", "damage", or "location"</p>'
 };
 
 const SELECTORS = {
@@ -417,8 +420,23 @@ const displayResults = (results, duration, container, performSearch) => {
 const buildSearchURL = (query) => 
   `${API_URL}?query=${encodeURIComponent(query)}&addon=${ADDON_LIST}&limit=${SEARCH_LIMIT}&sort=${SEARCH_SORT}`;
 
-const extractResults = (fuseResults) => 
-  fuseResults.map(r => r.item);
+const isExactTypeMatch = (result, normalizedQuery) =>
+  result.category === 'Type' && (
+    normalizeType(result.title.toLowerCase()) === normalizedQuery ||
+    (result.syntax && result.syntax.toLowerCase().includes(normalizedQuery))
+  );
+
+const extractResults = (fuseResults, query) => {
+  const results = fuseResults.map(r => r.item);
+  const normalizedQuery = normalizeType(query.toLowerCase().trim());
+  
+  return results.sort((a, b) => {
+    const aMatch = isExactTypeMatch(a, normalizedQuery);
+    const bMatch = isExactTypeMatch(b, normalizedQuery);
+    
+    return aMatch === bMatch ? 0 : aMatch ? -1 : 1;
+  });
+};
 
 const getSearchHistory = () => {
   try {
@@ -442,6 +460,7 @@ const updateURL = (query) => {
   } else {
     url.searchParams.delete('q');
   }
+  url.searchParams.delete('id');
   window.history.pushState({}, '', url);
 };
 
@@ -457,7 +476,7 @@ const performSearch = async (query, updateHistory = true) => {
     
     const fuse = new Fuse(data.results, FUSE_CONFIG);
     
-    const results = extractResults(fuse.search(query));
+    const results = extractResults(fuse.search(query), query);
     const duration = Math.round(performance.now() - start);
     
     displayResults(results, duration, container, performSearch);
@@ -542,6 +561,45 @@ const hideHistoryDropdown = () => {
   if (dropdown) dropdown.remove();
 };
 
+const setupClearButton = (searchbar) => {
+  const wrapper = document.createElement('div');
+  wrapper.style.cssText = STYLES.searchWrapper;
+  
+  searchbar.parentNode.insertBefore(wrapper, searchbar);
+  wrapper.appendChild(searchbar);
+  
+  const clearButton = document.createElement('button');
+  clearButton.textContent = '×';
+  clearButton.style.cssText = STYLES.clearButton;
+  clearButton.style.display = 'none';
+  clearButton.className = 'clear-search-button';
+  
+  clearButton.addEventListener('click', () => {
+    searchbar.value = '';
+    clearButton.style.display = 'none';
+    const container = document.getElementById(SELECTORS.container);
+    container.innerHTML = MESSAGES.emptyState;
+    updateURL('');
+    searchbar.focus();
+  });
+  
+  clearButton.addEventListener('mouseenter', () => {
+    clearButton.style.backgroundColor = STYLE.on;
+  });
+  
+  clearButton.addEventListener('mouseleave', () => {
+    clearButton.style.backgroundColor = STYLE.off;
+  });
+  
+  wrapper.appendChild(clearButton);
+  
+  searchbar.addEventListener('input', () => {
+    clearButton.style.display = searchbar.value ? 'block' : 'none';
+  });
+  
+  return clearButton;
+};
+
 const loadQueryFromURL = () => {
   const params = new URLSearchParams(window.location.search);
   return params.get('q');
@@ -554,6 +612,10 @@ const loadResultIdFromURL = () => {
 
 document.addEventListener('DOMContentLoaded', () => {
   const searchbar = document.getElementById(SELECTORS.searchbar);
+  const container = document.getElementById(SELECTORS.container);
+
+  container.innerHTML = MESSAGES.emptyState;
+  const clearButton = setupClearButton(searchbar);
   
   searchbar.addEventListener('keypress', handleSearch(performSearch));
   searchbar.addEventListener('input', (e) => handleInput(e, performSearch));
@@ -568,6 +630,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const initialQuery = loadQueryFromURL();
   if (initialQuery) {
     searchbar.value = initialQuery;
+    clearButton.style.display = 'block';
     performSearch(initialQuery, false);
   }
 });
