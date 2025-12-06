@@ -17,7 +17,7 @@ const CATEGORY_COLORS = {
   Structure: '#20C997'
 };
 
-const ADDON_LIST = 'Skript,SkBee,oopsk,SkCheese,skript-reflect,skript-gui,skNoise';
+const ADDON_LIST = 'Skript,SkBee,oopsk,SkCheese,skript-reflect,skript-gui,skNoise,skript-particle';
 const API_URL = 'https://api.skdocs.org/api/search';
 const SEARCH_LIMIT = 250;
 const SEARCH_SORT = 'relevance';
@@ -75,6 +75,7 @@ const MESSAGES = {
   noResults: '<p class="extra-info">No results found.</p>',
   error: '<p class="extra-info">Search failed. Please try again.</p>',
   results: (duration, count) => `<p class="extra-info">Took ${duration}ms for ${count} results</p><br>`,
+  resultsDetailed: (duration, count, breakdown) => `<p class="extra-info">Took ${duration}ms for ${count} results (fetch: ${breakdown.fetch}ms, fuse: ${breakdown.fuse}ms, render: ${breakdown.render}ms)</p><br>`,
   copied: 'copied',
   copy: 'copy',
   short: 'short',
@@ -182,10 +183,8 @@ function shortenSyntax(text) {
   function processSegment(str) {
     let result = '';
     let i = 0;
-
     while (i < str.length) {
       const char = str[i];
-
       if (char === '[') {
         let depth = 1;
         let j = i + 1;
@@ -243,8 +242,21 @@ function shortenSyntax(text) {
     parts.push(str.slice(last));
     return parts;
   }
-
-  return processSegment(text).replace(/\s+/g, ' ').trim();
+  
+  const normalized = text
+    .replace(/\s+/g, ' ')
+    .replace(/\s*\[\s*/g, ' [')
+    .replace(/\s*\]\s*/g, '] ')
+    .trim();
+  
+  const shortened = processSegment(normalized);
+  
+  // Clean up extra spaces after shortening
+  return shortened
+    .replace(/\s+/g, ' ')
+    .replace(/\s*\[\s*/g, ' [')
+    .replace(/\s*\]\s*/g, ']')
+    .trim();
 }
 
 const createSyntaxLines = (syntax, category) => {
@@ -634,3 +646,70 @@ document.addEventListener('DOMContentLoaded', () => {
     performSearch(initialQuery, false);
   }
 });
+
+
+const performance_diagnostics = {
+  enabled: true,
+  searches: [],
+  logSearch(query, timings, resultCount) {
+    if (!this.enabled) return;
+    
+    const entry = {
+      timestamp: Date.now(),
+      query,
+      resultCount,
+      timings,
+      total: timings.total
+    };
+    
+    this.searches.push(entry);
+    
+    console.group(`🔍 Search Performance: "${query}"`);
+    console.log(`Total: ${timings.total}ms`);
+    console.log(`├─ Fetch: ${timings.fetch}ms (${((timings.fetch/timings.total)*100).toFixed(1)}%)`);
+    console.log(`├─ Fuse Init: ${timings.fuseInit}ms (${((timings.fuseInit/timings.total)*100).toFixed(1)}%)`);
+    console.log(`├─ Fuse Search: ${timings.fuseSearch}ms (${((timings.fuseSearch/timings.total)*100).toFixed(1)}%)`);
+    console.log(`├─ Sort: ${timings.sort}ms (${((timings.sort/timings.total)*100).toFixed(1)}%)`);
+    console.log(`└─ Render: ${timings.render}ms (${((timings.render/timings.total)*100).toFixed(1)}%)`);
+    console.log(`Results: ${resultCount}`);
+    console.groupEnd();
+  },
+  getStats() {
+    if (!this.searches.length) return null;
+    
+    const totalSearches = this.searches.length;
+    const avgTotal = this.searches.reduce((sum, s) => sum + s.total, 0) / totalSearches;
+    const avgFetch = this.searches.reduce((sum, s) => sum + s.timings.fetch, 0) / totalSearches;
+    const avgFuse = this.searches.reduce((sum, s) => sum + s.timings.fuseInit + s.timings.fuseSearch, 0) / totalSearches;
+    const avgRender = this.searches.reduce((sum, s) => sum + s.timings.render, 0) / totalSearches;
+    
+    return {
+      totalSearches,
+      averages: {
+        total: avgTotal.toFixed(2),
+        fetch: avgFetch.toFixed(2),
+        fuse: avgFuse.toFixed(2),
+        render: avgRender.toFixed(2)
+      },
+      recent: this.searches.slice(-5)
+    };
+  },
+  printStats() {
+    const stats = this.getStats();
+    if (!stats) {
+      console.log('No search performance data collected yet.');
+      return;
+    }
+    
+    console.group('📊 Search Performance Statistics');
+    console.log(`Total searches: ${stats.totalSearches}`);
+    console.log('Average timings:');
+    console.log(`  Total: ${stats.averages.total}ms`);
+    console.log(`  Fetch: ${stats.averages.fetch}ms`);
+    console.log(`  Fuse: ${stats.averages.fuse}ms`);
+    console.log(`  Render: ${stats.averages.render}ms`);
+    console.groupEnd();
+  }
+};
+
+window.searchDiagnostics = performance_diagnostics;
