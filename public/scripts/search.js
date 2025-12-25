@@ -17,16 +17,16 @@ const CATEGORY_COLORS = {
   Structure: '#20C997'
 };
 
-const ADDON_LIST = 'Skript,SkBee,oopsk,SkCheese,skript-reflect,skript-gui,skNoise,skript-particle';
-const API_URL = 'https://api.skdocs.org/api/search';
-const SEARCH_LIMIT = 250;
-const SEARCH_SORT = 'relevance';
+// Updated to use your Rust API
+const API_URL = 'http://localhost:8081/all';
 const DEBOUNCE_DELAY = 300;
 const MAX_HISTORY = 10;
 const STORAGE_KEY = 'skript-search-history';
 
 const FUSE_CONFIG = {
-  keys: ['title', 'syntax', 'addon', 'category']
+  keys: ['title', 'syntax', 'addon', 'category'],
+  threshold: 0.3,
+  includeScore: true
 };
 
 const STYLE = {
@@ -72,6 +72,7 @@ const STYLES = {
 
 const MESSAGES = {
   searching: '<p class="extra-info">Searching...</p>',
+  loading: '<p class="extra-info">Loading syntax database...</p>',
   noResults: '<p class="extra-info">No results found.</p>',
   error: '<p class="extra-info">Search failed. Please try again.</p>',
   results: (duration, count) => `<p class="extra-info">Took ${duration}ms for ${count} results</p><br>`,
@@ -97,6 +98,8 @@ const EVENTS = {
 };
 
 let debounceTimer = null;
+let cachedData = null;
+let fuseInstance = null;
 
 const escapeHtml = (text) => {
   if (!text) return '';
@@ -427,9 +430,6 @@ const displayResults = (results, duration, container, performSearch) => {
   scrollToResultIfNeeded();
 };
 
-const buildSearchURL = (query) => 
-  `${API_URL}?query=${encodeURIComponent(query)}&addon=${ADDON_LIST}&limit=${SEARCH_LIMIT}&sort=${SEARCH_SORT}`;
-
 const isExactTypeMatch = (result, normalizedQuery) =>
   result.category === 'Type' && (
     normalizeType(result.title.toLowerCase()) === normalizedQuery ||
@@ -474,19 +474,40 @@ const updateURL = (query) => {
   window.history.pushState({}, '', url);
 };
 
+const loadData = async () => {
+  try {
+    const response = await fetch(API_URL);
+    const data = await response.json();
+
+    cachedData = data.results || data;
+    fuseInstance = new Fuse(cachedData, FUSE_CONFIG);
+    
+    return true;
+  } catch (error) {
+    console.error('Failed to load data:', error);
+    return false;
+  }
+};
+
 const performSearch = async (query, updateHistory = true) => {
-  
   const container = document.getElementById(SELECTORS.container);
+
+  if (!cachedData || !fuseInstance) {
+    container.innerHTML = MESSAGES.loading;
+    const loaded = await loadData();
+    if (!loaded) {
+      container.innerHTML = MESSAGES.error;
+      return;
+    }
+  }
+  
   container.innerHTML = MESSAGES.searching;
 
   try {
     const start = performance.now();
-    const response = await fetch(buildSearchURL(query));
-    const data = await response.json();
-    
-    const fuse = new Fuse(data.results, FUSE_CONFIG);
-    
-    const results = extractResults(fuse.search(query), query);
+
+    const fuseResults = fuseInstance.search(query);
+    const results = extractResults(fuseResults, query);
     const duration = Math.round(performance.now() - start);
     
     displayResults(results, duration, container, performSearch);
@@ -495,7 +516,8 @@ const performSearch = async (query, updateHistory = true) => {
       saveSearchHistory(query);
       updateURL(query);
     }
-  } catch {
+  } catch (error) {
+    console.error('Search error:', error);
     container.innerHTML = MESSAGES.error;
   }
 };
@@ -620,12 +642,20 @@ const loadResultIdFromURL = () => {
   return params.get('id');
 };
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   const searchbar = document.getElementById(SELECTORS.searchbar);
   const container = document.getElementById(SELECTORS.container);
 
-  container.innerHTML = MESSAGES.emptyState;
+  container.innerHTML = MESSAGES.loading;
   const clearButton = setupClearButton(searchbar);
+
+  const loaded = await loadData();
+  if (!loaded) {
+    container.innerHTML = MESSAGES.error;
+    return;
+  }
+  
+  container.innerHTML = MESSAGES.emptyState;
   
   searchbar.addEventListener('keypress', handleSearch(performSearch));
   searchbar.addEventListener('input', (e) => handleInput(e, performSearch));
