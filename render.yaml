@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: skript-api-backend
+    runtime: rust
+    buildCommand: cd rust_api && cargo build --release
+    startCommand: ./rust_api/target/release/rust_api
+    envVars:
+      - key: PORT
+        value: 8080
