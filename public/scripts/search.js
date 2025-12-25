@@ -17,8 +17,9 @@ const CATEGORY_COLORS = {
   Structure: '#20C997'
 };
 
-// Updated to use your Rust API
-const API_URL = 'http://localhost:8081/all';
+const API_URL = window.location.hostname === 'localhost' 
+  ? 'http://localhost:8081'
+  : 'https://www.skript-api.com';
 const DEBOUNCE_DELAY = 300;
 const MAX_HISTORY = 10;
 const STORAGE_KEY = 'skript-search-history';

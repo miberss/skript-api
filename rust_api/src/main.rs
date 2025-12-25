@@ -70,16 +70,18 @@ async fn main() {
         .with_state(state)
         .layer(cors);
     
-    let listener = match tokio::net::TcpListener::bind("0.0.0.0:8080").await {
+    let port = std::env::var("PORT").unwrap_or_else(|_| "8080".to_string());
+    let addr = format!("0.0.0.0:{}", port);
+
+    let listener = match tokio::net::TcpListener::bind(&addr).await {
         Ok(l) => l,
         Err(e) => {
-            eprintln!("Failed to bind to port 8080: {}", e);
-            eprintln!("Port may already be in use. Try a different port.");
+            eprintln!("Failed to bind to {}: {}", addr, e);
             return;
         }
     };
-    
-    println!("Server running on http://0.0.0.0:8080");
+
+    println!("Server running on http://0.0.0.0:{}", port);
     
     axum::serve(listener, app).await.unwrap();
 }
