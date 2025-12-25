@@ -19,7 +19,7 @@ const CATEGORY_COLORS = {
 
 const API_URL = window.location.hostname === 'localhost' 
   ? 'http://localhost:8081'
-  : 'https://www.skript-api.com';
+  : 'https://skript-api-backend.onrender.com';
 const DEBOUNCE_DELAY = 300;
 const MAX_HISTORY = 10;
 const STORAGE_KEY = 'skript-search-history';
