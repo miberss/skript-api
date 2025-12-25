@@ -1,6 +1,10 @@
+console.log("Starting server...");
+console.log("PORT:", process.env.PORT || 3000);
+
 const server = Bun.serve({
   port: process.env.PORT || 3000,
   async fetch(req) {
+    console.log("Request:", req.url);
     const url = new URL(req.url);
     
     if (url.pathname === "/") {
@@ -19,3 +23,10 @@ const server = Bun.serve({
 });
 
 console.log(`Server running on port ${server.port}`);
+console.log("Server started successfully!");
+
+// Keep process alive
+process.on('SIGTERM', () => {
+  console.log('SIGTERM received, shutting down...');
+  process.exit(0);
+});
