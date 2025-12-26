@@ -61,11 +61,57 @@ const STYLES = {
   copyButton: `margin-left: 0.5ch; padding: 0.3ch; background-color: ${STYLE.off}; border: none; cursor: pointer; font-size: 0.9em; overflow: visible; color: ${STYLE.gray}; font-family: IosevkaSS14;`,
   pageButton: `padding: 0.5ch; background-color: ${STYLE.off}; border: none; cursor: pointer; overflow: visible; color: ${STYLE.gray}; font-family: inherit;`,
   pageButtonDisabled: `padding: 0.5ch; background-color: ${STYLE.off}; opacity: 0.5; border: none; cursor: not-allowed; overflow: visible; color: ${STYLE.gray}; font-family: inherit;`,
-  historyDropdown: `position: absolute; background: ${STYLE.off}; width: 60ch; font-size: 0.9em;`,
-  historyItem: `cursor: pointer; background-color: ${STYLE.off};`,
-  resultBlock: (color) => `margin-bottom: 0.5lh; padding: 1ch; background-color: ${STYLE.off}; border-left: 0.5ch solid ${color}; max-width: 100ch;`,
-  clearButton: `position: absolute; right: 0.5ch; top: 50%; transform: translateY(-50%); padding: 0.2ch 0.7ch; background-color: #00000000; border: none; cursor: pointer; color: ${STYLE.gray}; font-family: IosevkaSS14; font-size: 0.9em;`,
-  searchWrapper: `position: relative; display: inline-block;`
+
+  historyDropdown: `
+    position: absolute;
+    top: 100%;
+    left: 0;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 0.5ch 0;
+    font-size: 1em;
+  `,
+
+  historyItem: `
+    padding: 0.5ch 1ch;
+    cursor: pointer;
+    width: 100%;
+    box-sizing: border-box;
+    background: ${STYLE.off};
+    transition: background 0.15s;
+  `,
+
+  resultBlock: (color) => `
+    margin-bottom: 0.5lh;
+    padding: 1ch;
+    background-color: ${STYLE.off};
+    border-left: 0.5ch solid ${color};
+    max-width: inherit;
+  `,
+
+  clearButton: `
+    position: absolute;
+    right: 0.5ch;
+    top: 50%;
+    transform: translateY(-50%);
+    width: auto;
+    height: 1.5em;
+    padding: 0 0.5ch;
+    background-color: transparent;
+    border: none;
+    cursor: pointer;
+    font-size: 1em;
+    color: ${STYLE.gray};
+    line-height: 1;
+  `,
+
+  searchWrapper: `
+    width: 70ch;
+    box-sizing: border-box;
+    padding: 1ch 1ch;
+    display: block;
+    position: relative;
+  `,
 };
 
 const MESSAGES = {
@@ -524,7 +570,11 @@ const handleSearch = (performSearch) => (e) => {
   if (!isEnterKey(e)) return;
   
   const query = e.target.value.trim();
-  if (query) performSearch(query);
+  if (query) {
+    searchbar.blur();
+    hideHistoryDropdown();
+    performSearch(query);
+  }
 };
 
 const debounce = (func, delay) => {
@@ -543,7 +593,6 @@ const handleInput = debounce((e, performSearch) => {
 
 const createHistoryDropdown = (history) => {
   if (!history.length) return '';
-  
   return `
     <div id="${SELECTORS.historyDropdown}" style="${STYLES.historyDropdown}">
       ${history.map(query => `
@@ -584,6 +633,7 @@ const showHistoryDropdown = (searchbar, performSearch) => {
   });
 };
 
+
 const hideHistoryDropdown = () => {
   const dropdown = document.getElementById(SELECTORS.historyDropdown);
   if (dropdown) dropdown.remove();
@@ -592,16 +642,16 @@ const hideHistoryDropdown = () => {
 const setupClearButton = (searchbar) => {
   const wrapper = document.createElement('div');
   wrapper.style.cssText = STYLES.searchWrapper;
-  
+
   searchbar.parentNode.insertBefore(wrapper, searchbar);
   wrapper.appendChild(searchbar);
-  
+
   const clearButton = document.createElement('button');
   clearButton.textContent = '×';
   clearButton.style.cssText = STYLES.clearButton;
   clearButton.style.display = 'none';
-  clearButton.className = 'clear-search-button';
-  
+  wrapper.appendChild(clearButton);
+
   clearButton.addEventListener('click', () => {
     searchbar.value = '';
     clearButton.style.display = 'none';
@@ -610,7 +660,7 @@ const setupClearButton = (searchbar) => {
     updateURL('');
     searchbar.focus();
   });
-  
+
   clearButton.addEventListener('mouseenter', () => {
     clearButton.style.backgroundColor = STYLE.on;
   });
