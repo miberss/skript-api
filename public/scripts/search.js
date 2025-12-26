@@ -17,9 +17,10 @@ const CATEGORY_COLORS = {
   Structure: '#20C997'
 };
 
+console.log(window.location.hostname)
 const API_URL = window.location.hostname === 'localhost' 
-  ? 'http://localhost:8081'
-  : 'https://skript-api-backend.onrender.com';
+  ? 'http://localhost:8080/all'
+  : 'https://skript-api-backend.onrender.com/all';
 const DEBOUNCE_DELAY = 300;
 const MAX_HISTORY = 10;
 const STORAGE_KEY = 'skript-search-history';
@@ -479,6 +480,8 @@ const loadData = async () => {
   try {
     const response = await fetch(API_URL);
     const data = await response.json();
+
+    console.log(data)
 
     cachedData = data.results || data;
     fuseInstance = new Fuse(cachedData, FUSE_CONFIG);

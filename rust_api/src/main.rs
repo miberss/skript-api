@@ -17,12 +17,6 @@ struct SearchParams {
     q: String,
 }
 
-#[derive(Deserialize)]
-struct AllParams {
-    #[serde(default)]
-    addon: Option<String>,
-}
-
 #[derive(Clone)]
 struct AppState {
     cache: Arc<RwLock<Option<Value>>>,
@@ -32,11 +26,9 @@ struct AppState {
 async fn main() {
     let cache: Arc<RwLock<Option<Value>>> = Arc::new(RwLock::new(None));
     let cache_clone = cache.clone();
-    
-    // Spawn task to fetch and cache all data
+
     tokio::spawn(async move {
         let client = Client::new();
-        // Request with specific addons filter
         let addons = "Skript,SkBee,skript-reflect,skript-gui,skNoise,skript-particle";
         let url = format!(
             "https://api.skdocs.org/api/search?q=ALL_ADDON_SYNTAXES&addon={}",
@@ -57,8 +49,7 @@ async fn main() {
     });
     
     let state = AppState { cache };
-    
-    // Configure CORS to allow requests from anywhere
+
     let cors = CorsLayer::new()
         .allow_origin(Any)
         .allow_methods(Any)
@@ -104,7 +95,6 @@ async fn search(
     let read = state.cache.read().await;
     
     if let Some(data) = &*read {
-        // Assuming the API returns { "results": [...] }
         let results = data.get("results")
             .and_then(|v| v.as_array())
             .cloned()
