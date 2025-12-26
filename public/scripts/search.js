@@ -82,6 +82,7 @@ const STYLES = {
   `,
 
   resultBlock: (color) => `
+    margin-top: 0.5lh;
     margin-bottom: 0.5lh;
     padding: 1ch;
     background-color: ${STYLE.off};
@@ -437,8 +438,7 @@ const attachCopyButtons = () => {
   });
 };
 
-const createResultsHTML = (results, duration) => `
-  ${MESSAGES.results(duration, results.length)}
+const createResultsHTML = (results) => `
   ${results.map(renderResult).join('')}
 `;
 
@@ -458,7 +458,7 @@ const scrollToResultIfNeeded = () => {
   }
 };
 
-const displayResults = (results, duration, container, performSearch) => {
+const displayResults = (results, container, performSearch) => {
   window.scrollTo({ top: 0 });
   
   if (!results.length) {
@@ -466,7 +466,7 @@ const displayResults = (results, duration, container, performSearch) => {
     return;
   }
   
-  container.innerHTML = createResultsHTML(results, duration);
+  container.innerHTML = createResultsHTML(results);
   
   attachTypeLinks(performSearch);
   attachCopyButtons();
@@ -547,13 +547,10 @@ const performSearch = async (query, updateHistory = true) => {
   container.innerHTML = MESSAGES.searching;
 
   try {
-    const start = performance.now();
-
     const fuseResults = fuseInstance.search(query);
     const results = extractResults(fuseResults, query);
-    const duration = Math.round(performance.now() - start);
-    
-    displayResults(results, duration, container, performSearch);
+
+    displayResults(results, container, performSearch);
     
     if (updateHistory) {
       saveSearchHistory(query);
