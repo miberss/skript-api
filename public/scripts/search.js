@@ -17,7 +17,6 @@ const CATEGORY_COLORS = {
   Structure: '#20C997'
 };
 
-const API_URL = process.env.API_URL;
 const DEBOUNCE_DELAY = 300;
 const MAX_HISTORY = 10;
 const STORAGE_KEY = 'skript-search-history';
@@ -475,7 +474,7 @@ const updateURL = (query) => {
 
 const loadData = async () => {
   try {
-    const response = await fetch(API_URL);
+    const response = await fetch("https://skript-api-backend.onrender.com/all");
     const data = await response.json();
 
     cachedData = data.results || data;
