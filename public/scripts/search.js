@@ -405,7 +405,7 @@ const scrollToResultIfNeeded = () => {
         element.scrollIntoView({ behavior: 'smooth', block: 'start' });
         element.style.backgroundColor = STYLE.on;
         setTimeout(() => {
-          element.style.backgroundColor = '';
+          element.style.backgroundColor = STYLE.off;
         }, 2000);
       }
     }, 100);
