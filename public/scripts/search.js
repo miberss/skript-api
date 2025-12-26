@@ -17,7 +17,6 @@ const CATEGORY_COLORS = {
   Structure: '#20C997'
 };
 
-console.log(window.location.hostname)
 const API_URL = process.env.API_URL;
 const DEBOUNCE_DELAY = 300;
 const MAX_HISTORY = 10;
@@ -476,18 +475,14 @@ const updateURL = (query) => {
 
 const loadData = async () => {
   try {
-    console.log(API_URL)
     const response = await fetch(API_URL);
     const data = await response.json();
-
-    console.log(data)
 
     cachedData = data.results || data;
     fuseInstance = new Fuse(cachedData, FUSE_CONFIG);
     
     return true;
   } catch (error) {
-    console.error('Failed to load data:', error);
     return false;
   }
 };
@@ -520,7 +515,6 @@ const performSearch = async (query, updateHistory = true) => {
       updateURL(query);
     }
   } catch (error) {
-    console.error('Search error:', error);
     container.innerHTML = MESSAGES.error;
   }
 };
