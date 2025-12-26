@@ -107,21 +107,33 @@ em {
     color: var(--gray);
 }
 
-.topnav input[type=text] {
-    padding: 0.5ch;
-    color:#D8DEE9;
-    font-family: inherit;
-    width: 60ch;
-    background-color: #b48ead15;
-    overflow: visible;
+.topnav-right {
+    margin-left: auto;
     display: flex;
-    flex-direction: row;
-    border-style: none;
-    outline: #12151a;
+    gap: 2ch;
+    padding-right: 1ch;
 }
 
-.str {
-    color: #A3BE8C;
+.topnav {
+    position: sticky;
+    top: 0.5lh;
+    z-index: 1000;
+    display: flex;
+    align-items: baseline;
+    gap: 1ch;
+    padding-left: 1ch;
+    background-color: #12151a6e;
+}
+
+.topnav input[type="text"] {
+    font-size: large;
+    font-family: inherit;
+    padding: 0.5ch;
+    color: #D8DEE9;
+    width: 50ch;
+    background-color: #12151a6e;
+    border: none;
+    outline: none;
 }
 
 .num {

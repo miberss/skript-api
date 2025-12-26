@@ -23,7 +23,7 @@ const STORAGE_KEY = 'skript-search-history';
 
 const FUSE_CONFIG = {
   keys: ['title', 'syntax', 'addon', 'category'],
-  threshold: 0.3,
+  threshold: 0.5,
   includeScore: true
 };
 
@@ -31,7 +31,7 @@ const STYLE = {
   foreground: 'var(--foreground)',
   gray: 'var(--gray)',
   darkCode: 'var(--dark-code)',
-  off: '#b48ead22',
+  off: '#12151a6e',
   on: '#a3be8c43',
 };
 
@@ -61,10 +61,10 @@ const STYLES = {
   copyButton: `margin-left: 0.5ch; padding: 0.3ch; background-color: ${STYLE.off}; border: none; cursor: pointer; font-size: 0.9em; overflow: visible; color: ${STYLE.gray}; font-family: IosevkaSS14;`,
   pageButton: `padding: 0.5ch; background-color: ${STYLE.off}; border: none; cursor: pointer; overflow: visible; color: ${STYLE.gray}; font-family: inherit;`,
   pageButtonDisabled: `padding: 0.5ch; background-color: ${STYLE.off}; opacity: 0.5; border: none; cursor: not-allowed; overflow: visible; color: ${STYLE.gray}; font-family: inherit;`,
-  historyDropdown: `position: absolute; background: var(--dark-code); width: 55ch; font-size: 0.9em;`,
+  historyDropdown: `position: absolute; background: ${STYLE.off}; width: 60ch; font-size: 0.9em;`,
   historyItem: `cursor: pointer; background-color: ${STYLE.off};`,
-  resultBlock: (color) => `margin-bottom: 0.5lh; padding: 1ch; background-color: rgba(18, 21, 26, 0.5); border-left: 0.5ch solid ${color}; max-width: 100ch;`,
-  clearButton: `position: absolute; right: 0.5ch; top: 50%; transform: translateY(-50%); padding: 0.3ch 0.5ch; background-color: ${STYLE.off}; border: none; cursor: pointer; color: ${STYLE.gray}; font-family: IosevkaSS14; font-size: 0.9em;`,
+  resultBlock: (color) => `margin-bottom: 0.5lh; padding: 1ch; background-color: ${STYLE.off}; border-left: 0.5ch solid ${color}; max-width: 100ch;`,
+  clearButton: `position: absolute; right: 0.5ch; top: 50%; transform: translateY(-50%); padding: 0.2ch 0.7ch; background-color: #00000000; border: none; cursor: pointer; color: ${STYLE.gray}; font-family: IosevkaSS14; font-size: 0.9em;`,
   searchWrapper: `position: relative; display: inline-block;`
 };
 
@@ -616,7 +616,7 @@ const setupClearButton = (searchbar) => {
   });
   
   clearButton.addEventListener('mouseleave', () => {
-    clearButton.style.backgroundColor = STYLE.off;
+    clearButton.style.backgroundColor = "#00000000";
   });
   
   wrapper.appendChild(clearButton);
